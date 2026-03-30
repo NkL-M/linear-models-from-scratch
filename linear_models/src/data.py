@@ -1,19 +1,26 @@
 import numpy as np
 import pandas as pd
-
 from sklearn import datasets
 from sklearn.model_selection import train_test_split
 
 
 def data_loader(task='regression') -> tuple:
-    #TODO get classification data
     """
     Function that load simple datasets for this project.
         'regression': Import the diabetes dataset from sklearn
         'classification': Import the...
 
+    Parameter
+    ----
+    task : str
+        - 'regression'
+            Import the diabetes dataset from sklearn's datasets module
+        - 'classification'
+            Import the breast cancer dataset from sklearn's datasets module
+
     Returns
     ----
+    X, y : tuple
     Tuple of feature dataset X (Pandas.DataFrame) and a target vector y (Pandas.Series)
     """
     if task=="regression":
@@ -23,35 +30,40 @@ def data_loader(task='regression') -> tuple:
         return X, y
 
     elif task=="classification":
-        # X, y =
-        print(f"The feature matrix shape is: {X.shape}")
-        print(f"The target vector size is: {y.shape}")
+        X, y = datasets.load_breast_cancer(return_X_y=True, as_frame = True)
+        print(f"The feature matrix has {X.shape[0]} cols and {X.shape[1]} rows")
+        print(f"The target vector has {y.shape[0]} values")
         return X, y
 
     else:
-        print(f"❌ Dataset for the {task} task not found")
+        raise ValueError(f"Dataset for the {task} task not found")
 
 
 def features_dataset(X) -> np.ndarray:
     """
-    Function that create a feature dataset ready to be inputed in an ML Algorithm
+    Function that create a feature dataset ready to be inputed in an ML Algorithm.
 
     Returns
     ----
-    numpy.ndarray -> Feature matrix
+    X_mat : np.ndarray
+    Feature matrix
     """
     X_mat = np.hstack((np.ones((X.shape[0], 1)), X))
     assert X_mat.shape[1] == X.shape[1] + 1, 'Error in feature matrix shape'
     return X_mat
 
 
-def split_data(X_mat, y, test_size=0.2):
+def split_data(X_mat, y, test_size=0.2) -> tuple:
     """
     Function that split the data into a train, val and test datasets
 
+    Parameter
+    ----
+    test_size : float
+
     Returns
     ----
-        tuple
+    X_train, X_val, X_test, y_train, y_val, y_test : tuple
     """
     X_train_tmp, X_test, y_train_tmp, y_test = train_test_split(X_mat,
                                                                 y,
@@ -74,15 +86,15 @@ def split_data(X_mat, y, test_size=0.2):
 def get_data(X, y, test_size=0.2) -> tuple:
     """
     Function that get the data ready for ML algorithms and split the data into
-    a train, val and test datasets
+    a train, val and test datasets.
 
     Arg
     ----
-        test_size -> float
+    test_size : float
 
     Returns
     ----
-        (X_train, X_val, X_test, y_train, y_val, y_test) -> tuple
+    (X_train, X_val, X_test, y_train, y_val, y_test) : tuple
     """
     X_mat = features_dataset(X)
     X_train, X_val, X_test, y_train, y_val, y_test = split_data(X_mat, y, test_size=test_size)
