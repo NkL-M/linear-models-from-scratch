@@ -136,10 +136,16 @@ def baseline_score(y_test, y_train,  metric='mse', task='regression'):
         - 'classification'
 
     metric : str
+    - Regression metrics
         - 'mse'
         - 'rmse'
         - 'mae'
         - 'r2'
+    - Classification metrics
+        - 'accuracy'
+        - 'recall'
+        - 'precision'
+        - 'f1'
 
     Returns
     ----
@@ -149,22 +155,105 @@ def baseline_score(y_test, y_train,  metric='mse', task='regression'):
     baseline_score = evaluate_score(y_true=y_test, y_pred=baseline_pred, metric=metric, task=task)
     return float(baseline_score)
 
+def ordinary_least_square(X, y) -> np.ndarray:
+    """
+    Function computing closed form solution equation for the linear regresion algorithm (ordinary least square).
 
-#-------------------------#
-# Linear Regression Class #
-#-------------------------#
+    Returns
+    ----
+    ols : np.ndarray
+    """
+    assert(y.shape==(y.shape[0],)) # TODO Necessary??
+    ols = np.linalg.inv(np.matmul(X.T, X)) @ np.matmul(X.T, y) ##
+    # ols = np.linalg.solve(X.T @ X, X.T @ y) # TODO what about this version
+    return ols
+
+#---------------------------#
+# Linear Regression Classes #
+#---------------------------#
+
 class LinearRegOLS():
     """
-    Linear Regression Class with closed solition, Ordinary Least Squares (OLS)
+    Linear Regression Class with closed form solution, Ordinary Least Squares (OLS)
     """
 
     def __init__(self):
         pass
 
-    def train(self, X_train, y_train):
-        # formula = np.linalg.inv(np.matmul(X_train.T, X_train)) * np.matmul(X_train.T, y_train)
-        # return formula
+    def train(self, X_train, y_train, X_val=None, y_val=None):
+        if X_train.shape[0] > 100_000:
+            print("Training dataset exceed 100K rows, Gradient Descent advised.")
+
+        ols_results = {}
+        coeffs_ols = ordinary_least_square(X_train, y_train)
+        self.coeffs_ = coeffs_ols
+        self.X_train = X_train # TODO needed if wanting to do residual plots
+        self.y_train = y_train
+
+        # -------- Compute Loss -------- #
+        train_loss = loss_function(y_train, pred(X_train, self.coeffs_), loss='mse') # TODO Change by R2 or others??
+
+        if X_val!=None and y_val!=None:
+            val_loss = loss_function(y_val, pred(X_val, self.coeffs_), loss='mse')
+            ols_results['train_loss'], ols_results['val_loss'] = train_loss, val_loss
+        else:
+            ols_results['train_loss'] = train_loss
+
+        return ols_results
+
+    def evaluate(self, X_test, y_test, metric='r2'):
+        """
+        Evaluates model's performance according to selected metric and compare the result to a baseline.
+
+        Arg
+        ----
+        metric : str
+            - 'mse'
+            - 'rmse'
+            - 'mae'
+            - 'r2'
+
+        Returns
+        ----
+        test_score : float
+            - Score on the test dataset
+        """
+        # ------ Baseline Computation ------ #
+        y_train = self.y_train
+        self.baseline = baseline_score(y_train, y_test, metric=metric, task='regression')
+
+        # -------- Model Evaluation -------- #
+        y_pred = pred(X_test, self.coeffs_)
+        test_score = evaluate_score(y_true=y_test, y_pred=y_pred, metric=metric, task='regression')
+
+        if metric=='r2':
+            if self.baseline < test_score:
+                print(f"✅ Model performed better ({metric}_score = {test_score}) than the baseline score ({metric}_score = {self.baseline})")
+            else:
+                print(f"❌ Model did not performed better ({metric}_score = {test_score}) than the baseline score ({metric}_score = {self.baseline})")
+
+        else:
+            if self.baseline > test_score:
+                print(f"✅ Model performed better ({metric}_score = {test_score}) than the baseline score ({metric}_score = {self.baseline})")
+            else:
+                print(f"❌ Model did not performed better ({metric}_score = {test_score}) than the baseline score ({metric}_score = {self.baseline})")
+
+        return test_score
+
+    def residuals_plot():
         pass
+
+    def predict(self, X_new) -> np.ndarray:
+        """
+        Function that predicts target values with the weights computed during the training phase.
+
+        Returns
+        ----
+        predictions : np.ndarray
+            - array of prediction on new observation(s)
+        """
+        predictions = pred(X_new, self.coeffs_)
+        return predictions
 
 class LinearRegSGD():
     """
@@ -221,7 +310,15 @@ class LinearRegSGD():
 
         print(f"Loss function: {self.loss}")
 
+        if isinstance(y_train, pd.Series):
+            y_train = y_train.to_numpy()
+
         for epoch in range(epochs):
+            # ----------- Compute Train / Val Loss ----------- #
+            indices = np.random.permutation(n_train)
+            X_train = X_train[indices]
+            y_train = y_train[indices]
+
             # ----------- Compute Train / Val Loss ----------- #
             loss_train = loss_function(y_true=y_train, y_pred=pred(X_train, coeffs), loss=self.loss)
             loss_val = loss_function(y_true=y_val, y_pred=pred(X_val, coeffs), loss=self.loss)
@@ -264,7 +361,7 @@ class LinearRegSGD():
         history['coeffs_history'] = coeffs_history
 
         self.history = history
-        self.best_coeffs = history['coeffs_history'][-1]
+        self.best_coeffs_ = history['coeffs_history'][-1]
         self.y_train = y_train
 
         return history
@@ -288,58 +385,47 @@ class LinearRegSGD():
         """
         # ------ Baseline Computation ------ #
         y_train = self.y_train
-        score_baseline = baseline_score(y_train, y_test, metric=metric, task='regression')
+        self.baseline = baseline_score(y_train, y_test, metric=metric, task='regression')
 
         # -------- Model Evaluation -------- #
-        y_pred = pred(X_test, self.best_coeffs)
+        y_pred = pred(X_test, self.best_coeffs_)
         test_score = evaluate_score(y_true=y_test, y_pred=y_pred, metric=metric, task='regression')
 
-
         if metric=='r2':
-            if score_baseline < test_score:
-                print(f"✅ Model performed better ({metric}_score = {test_score}) than the baseline score ({metric}_score = {score_baseline})")
+            if self.baseline < test_score:
+                print(f"✅ Model performed better ({metric}_score = {test_score}) than the baseline score ({metric}_score = {self.baseline})")
             else:
-                print(f"❌ Model did not performed better ({metric}_score = {test_score}) than the baseline score ({metric}_score = {score_baseline})")
+                print(f"❌ Model did not performed better ({metric}_score = {test_score}) than the baseline score ({metric}_score = {self.baseline})")
 
         else:
-            if score_baseline > test_score:
-                print(f"✅ Model performed better ({metric}_score = {test_score}) than the baseline score ({metric}_score = {score_baseline})")
+            if self.baseline > test_score:
+                print(f"✅ Model performed better ({metric}_score = {test_score}) than the baseline score ({metric}_score = {self.baseline})")
             else:
-                print(f"❌ Model did not performed better ({metric}_score = {test_score}) than the baseline score ({metric}_score = {score_baseline})")
+                print(f"❌ Model did not performed better ({metric}_score = {test_score}) than the baseline score ({metric}_score = {self.baseline})")
 
         return test_score
 
-    def plot_learning_curves(self, plot_metric=True):
+    def plot_learning_curves(self):
         """
         Plot learning curves which shows the scores of training and validation datasets for each epoch.
-
-        Arg
-        ---
-        plot_metric : bool
-            - Allows to choose whether to returns both loss and metric curves plots or only the loss curves.
         """
-        if plot_metric==True:
-            print("Model's training and validation losses and metric plotted:")
-            return plot_loss_metric(self.history)
-        else:
-            print("Model's training and validation losses plotted:")
-            return plot_loss(self.history)
+        return plot_loss(self.history, self.baseline)
 
     def predict(self, X_new) -> np.ndarray:
         """
-        Function that predicts target values with the weights computed.
+        Function that predicts target values with the weights computed during the training phase.
 
         Returns
         ----
         predictions : np.ndarray
             - array of prediction on new observation(s)
         """
-        predictions = pred(X_new, self.best_coeffs)
+        predictions = pred(X_new, self.best_coeffs_)
         return predictions
 
-#---------------------------#
-# Logistic Regression Class #
-#---------------------------#
+#-----------------------------#
+# Logistic Regression Classes #
+#-----------------------------#
 
 def sigmoid(y_pred):
     """
@@ -360,9 +446,42 @@ class LogisticRegSGD():
         pass
 
     def evaluate(self):
+        metric_train_history = []
+        metric_val_history = []
+
+        # for epoch in range(epochs):
+        #     # ----------- Compute Train / Val Loss ----------- #
+        #     loss_train = loss_function(y_true=y_train, y_pred=pred(X_train, coeffs), loss=self.loss)
+        #     loss_val = loss_function(y_true=y_val, y_pred=pred(X_val, coeffs), loss=self.loss)
+
+        #     # --------------- Loss Histories ----------------- #
+        #     loss_train_history.append(loss_train)
+        #     loss_val_history.append(loss_val)
+
+        #     # ----------- Compute Train / Val Metric ----------- #
+        #     metric_train_history = evaluate_score(y_true=y_train, y_pred=pred(X_train, coeffs), metric='r2', task='classification')
+        #     metric_train_history = loss_function(y_true=y_val, y_pred=pred(X_val, coeffs), loss=self.loss)
+
+        #     # --------------- Metric Histories ----------------- #
+        #     loss_train_history.append(loss_train)
+        #     loss_val_history.append(loss_val)
         pass
 
-    def plot_learning_curves(self):
+    def plot_learning_curves(self, plot_metric=True):
+        """
+        Plot learning curves which shows the scores of training and validation datasets for each epoch.
+
+        Arg
+        ---
+        plot_metric : bool
+            - Allows to choose whether to returns both loss and metric curves plots or only the loss curves.
+        """
+        # if plot_metric==True:
+        #     print("Model's training and validation losses and metric plotted:")
+        #     return plot_loss_metric(self.history, self.baseline)
+        # else:
+        #     print("Model's training and validation losses plotted:")
+        #     return plot_loss(self.history, self.baseline)
         pass
 
     def predict(self):
