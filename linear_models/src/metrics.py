@@ -1,3 +1,6 @@
+"""
+Module for metrics and loss function for Linear Models built from scratch without ML librairies like Scikit-Learn.
+"""
 import numpy as np
 
 #-----------------------------#

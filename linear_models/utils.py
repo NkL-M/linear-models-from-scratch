@@ -1,4 +1,5 @@
 import matplotlib.pyplot as plt
+import numpy as np
 #TODO - Create Seaborn or Plotly.express version of these functions
 # import seaborn as sns
 # import plotly.express as px
@@ -29,6 +30,7 @@ def plot_loss(history):
     Plot
     """
     # --- LOSS --- #
+    plt.figure(figsize=(7,4))
     plt.plot(history['loss_train_history'])
     plt.plot(history['loss_val_history'])
 
@@ -36,9 +38,11 @@ def plot_loss(history):
     plt.ylabel('Loss')
     plt.xlabel('Epoch')
 
-    # plt.ylim((0,3))
+    # inf = np.min(history['loss_train_history'])#-1000
+    # sup = np.max(history['loss_train_history']) + (np.max(history['loss_train_history']) * 1.1)
+    # plt.ylim((inf, sup))
 
-    plt.legend(['Train', 'Val'], loc='best')
+    plt.legend(['Training loss', 'Validation loss'], loc='best')
 
     plt.grid(axis="x",linewidth=0.5)
     plt.grid(axis="y",linewidth=0.5)
@@ -51,7 +55,7 @@ def plot_loss_metric(history):
     ----
     Subplots
     """
-    fig, ax = plt.subplots(1,2, figsize=(20,7))
+    fig, ax = plt.subplots(1,2, figsize=(15,5))
 
     # --- LOSS --- #
     ax[0].plot(history['loss_train_history'])
@@ -61,7 +65,7 @@ def plot_loss_metric(history):
     ax[0].set_ylabel('Loss')
     ax[0].set_xlabel('Epoch')
 
-    ax[0].set_ylim((0,3))
+    # ax[0].set_ylim((0,3))
 
     ax[0].legend(['Train', 'Val'], loc='best')
 
@@ -72,13 +76,13 @@ def plot_loss_metric(history):
     # ax[1].plot(history['metric_train_history'])
     # ax[1].plot(history['metric_val_history'])
 
-    # ax[1].title('Model Accuracy')
-    # ax[1].ylabel('Metric')
-    # ax[1].xlabel('Epoch')
+    ax[1].set_title('Model metric')
+    ax[1].set_ylabel('Metric')
+    ax[1].set_xlabel('Epoch')
 
-    # ax[1].legend(['Train', 'Val'], loc='best')
+    ax[1].legend(['Train', 'Val'], loc='best')
 
     # ax[1].ylim((0,1))
 
-    # ax[1].grid(axis="x",linewidth=0.5)
-    # ax[1].grid(axis="y",linewidth=0.5)
+    ax[1].grid(axis="x",linewidth=0.5)
+    ax[1].grid(axis="y",linewidth=0.5)
