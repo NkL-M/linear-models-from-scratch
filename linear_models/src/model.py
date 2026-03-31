@@ -1,10 +1,11 @@
+"""
+Module for Linear Regression and Logistic Regression built from scratch without ML librairies like Scikit-Learn.
+"""
+
 import numpy as np
+import pandas as pd
 from linear_models.src.metrics import *
 from linear_models.utils import *
-
-"""
-Module for Linear Models built from scratch with libraires like Scikit-Learn
-"""
 
 #-----------------------#
 # Basic Model Functions #
@@ -57,11 +58,11 @@ def loss_function(y_true, y_pred, loss='mse'):
     ----
     loss_result : float
     """
-    loss_dict = {'mse' : mse(y_true, y_pred),
-                 'log_loss' : log_loss(y_true, y_pred)}
+    loss_dict = {'mse' : mse,
+                 'log_loss' : log_loss}
 
-    if loss in loss_dict.keys():
-        loss_result = loss_dict[loss]
+    if loss in loss_dict:
+        loss_result = loss_dict[loss](y_true, y_pred)
         return loss_result
 
     else:
@@ -74,13 +75,12 @@ def evaluate_score(y_true, y_pred, metric='r2', task='regression'):
     Parameter
     ----
     metric : str
-
-    Regression metrics
+    - Regression metrics
         - 'mse'
         - 'rmse'
         - 'mae'
         - 'r2'
-    Classification metrics
+    - Classification metrics
         - 'accuracy'
         - 'recall'
         - 'precision'
@@ -94,27 +94,26 @@ def evaluate_score(y_true, y_pred, metric='r2', task='regression'):
     ----
     eval_score : float
     """
-    regression_dict = {'mse' : mse(y_true, y_pred),
-                       'rmse' : rmse(y_true, y_pred),
-                       'mae' : mae(y_true, y_pred),
-                       'r2' : r_squared(y_true, y_pred)}
+    regression_dict = {'mse' : mse,
+                       'rmse' : rmse,
+                       'mae' : mae,
+                       'r2' : r_squared}
 
-    # TODO Finish regression metrics
-    clasification_dict = {'accuracy' : accuracy(y_true, y_pred)}#,
-    #                       'recall' : recall(y_true, y_pred),
-    #                       'precision' : precision(y_true, y_pred),
-    #                       'f1' : f1(y_true, y_pred)}
+    classification_dict = {'accuracy' : accuracy,
+                           'recall' : recall,
+                           'precision' : precision,
+                           'f1' : f1}
 
     if task == 'regression':
-        if metric in regression_dict.keys():
-            eval_score = regression_dict[metric]
+        if metric in regression_dict:
+            eval_score = regression_dict[metric](y_true, y_pred)
             return round(eval_score, 4)
         else:
             raise ValueError(f"Wrong Input, unknown regression metric '{metric}'")
 
     elif task == 'classification':
-        if metric in clasification_dict.keys():
-            eval_score = clasification_dict[metric]
+        if metric in classification_dict:
+            eval_score = classification_dict[metric](y_true, y_pred)
             return round(eval_score, 4)
         else:
             raise ValueError(f"Wrong Input, unknown classification metric '{metric}'")
@@ -146,10 +145,6 @@ def baseline_score(y_test, y_train,  metric='mse', task='regression'):
     ----
     baseline_score : float
     """
-    #TODO Adapt function for logistic regression
-    # if task=='regression':
-    #     baseline_pred = np.mean(y_train)
-    #     baseline_score = evaluate_score(y_true=y_test, y_pred=baseline_pred, metric=metric, task=task)
     baseline_pred = np.mean(y_train)
     baseline_score = evaluate_score(y_true=y_test, y_pred=baseline_pred, metric=metric, task=task)
     return float(baseline_score)
@@ -218,7 +213,6 @@ class LinearRegSGD():
         """
         nb_features = X_train.shape[1] # Number of features
         coeffs = np.zeros(shape=(nb_features,)) # Weights initialization
-        # loss = self.loss
 
         loss_train_history = []
         loss_val_history = []
@@ -242,7 +236,6 @@ class LinearRegSGD():
             # -------------- Gradient Computation ------------- #
             gradients = gradient(X_train, y_train, coeffs, loss=self.loss)
             coeffs_history.append(coeffs)
-            # coeffs -= learning_rate * gradients # TODO This one render history coef impossible
             coeffs = coeffs - (learning_rate * gradients)
 
             # ------------------ Early Stopping -------------- #
@@ -251,10 +244,7 @@ class LinearRegSGD():
                     if loss_val > loss_val_history[-2]:
                         early_stopping_count += 1
                         if early_stopping_count >= early_stopping:
-                            # ------ Restore Best Weight ------ #
-                            coeffs_history = coeffs_history[ : len(coeffs_history) - early_stopping] # TODO verify the Restore Best Weights
-                            # print(f"Test with removal : {coeffs_history_n[-1]}")
-                            # print(f"Test without removal : {coeffs_history[-1]}")
+                            coeffs_history = coeffs_history[:len(coeffs_history) - early_stopping] # Restore Best Weights
                             break
                     else:
                         early_stopping_count = 0
@@ -273,10 +263,9 @@ class LinearRegSGD():
         history['loss_val_history'] = loss_val_history
         history['coeffs_history'] = coeffs_history
 
-        # -------------- Variables to Pass ---------------#
+        self.history = history
         self.best_coeffs = history['coeffs_history'][-1]
         self.y_train = y_train
-        self.history = history
 
         return history
 
@@ -287,6 +276,10 @@ class LinearRegSGD():
         Arg
         ----
         metric : str
+            - 'mse'
+            - 'rmse'
+            - 'mae'
+            - 'r2'
 
         Returns
         ----
@@ -295,7 +288,7 @@ class LinearRegSGD():
         """
         # ------ Baseline Computation ------ #
         y_train = self.y_train
-        score_baseline = baseline_score(y_train, y_test, metric=metric, baseline_task='regression')
+        score_baseline = baseline_score(y_train, y_test, metric=metric, task='regression')
 
         # -------- Model Evaluation -------- #
         y_pred = pred(X_test, self.best_coeffs)
@@ -343,11 +336,6 @@ class LinearRegSGD():
         """
         predictions = pred(X_new, self.best_coeffs)
         return predictions
-
-# TODO Add a coeffs_, params_, epochs_, etc...
-
-    def kfold_cross_validation(X, y, fold=5):
-        pass
 
 #---------------------------#
 # Logistic Regression Class #
