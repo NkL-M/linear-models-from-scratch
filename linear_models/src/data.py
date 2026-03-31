@@ -1,3 +1,8 @@
+"""
+Module for importing data for showcasing Linear Models built from scratch without ML librairies like Scikit-Learn.
+The datasets themselves comes from `sklearn.datasets` module.
+"""
+
 import numpy as np
 import pandas as pd
 from sklearn import datasets
@@ -38,7 +43,6 @@ def data_loader(task='regression') -> tuple:
     else:
         raise ValueError(f"Dataset for the {task} task not found")
 
-
 def features_dataset(X) -> np.ndarray:
     """
     Function that create a feature dataset ready to be inputed in an ML Algorithm.
@@ -46,12 +50,11 @@ def features_dataset(X) -> np.ndarray:
     Returns
     ----
     X_mat : np.ndarray
-    Feature matrix
+    Creates feature matrix from a feature dataset.
     """
     X_mat = np.hstack((np.ones((X.shape[0], 1)), X))
     assert X_mat.shape[1] == X.shape[1] + 1, 'Error in feature matrix shape'
     return X_mat
-
 
 def split_data(X_mat, y, test_size=0.2) -> tuple:
     """
@@ -81,7 +84,6 @@ def split_data(X_mat, y, test_size=0.2) -> tuple:
     print(f"X_test: {X_test.shape} - y_test: {y_test.shape}")
 
     return X_train, X_val, X_test, y_train, y_val, y_test
-
 
 def get_data(X, y, test_size=0.2) -> tuple:
     """
