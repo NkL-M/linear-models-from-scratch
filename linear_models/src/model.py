@@ -163,9 +163,8 @@ def ordinary_least_square(X, y) -> np.ndarray:
     ----
     ols : np.ndarray
     """
-    assert(y.shape==(y.shape[0],)) # TODO Necessary??
-    ols = np.linalg.inv(np.matmul(X.T, X)) @ np.matmul(X.T, y) ##
-    # ols = np.linalg.solve(X.T @ X, X.T @ y) # TODO what about this version
+    assert(y.shape==(y.shape[0],))
+    ols = np.linalg.inv(np.matmul(X.T, X)) @ np.matmul(X.T, y)
     return ols
 
 #---------------------------#
@@ -177,31 +176,41 @@ class LinearRegOLS():
     Linear Regression Class with closed form solution, Ordinary Least Squares (OLS)
     """
 
-    def __init__(self):
-        pass
+    def train(self, X_train, y_train, X_val=None, y_val=None, loss='mse') -> dict:
+        """
+        Train linear model on the training dataset and evaluate loss bith on validation set.
 
-    def train(self, X_train, y_train, X_val=None, y_val=None):
-        if X_train.shape[0] > 100_000:
-            print("Training dataset exceed 100K rows, Gradient Descent advised.")
+        Arg
+        ----
+        metric : str
+            - 'mse'
+            - 'rmse'
+            - 'mae'
+            - 'r2'
 
+        Returns
+        ----
+        ols_results : dict
+            - 'loss_train' loss on the training dataset
+            - 'loss_val' loss on the validation dataset
+        """
+        self.y_train = y_train
         ols_results = {}
         coeffs_ols = ordinary_least_square(X_train, y_train)
         self.coeffs_ = coeffs_ols
-        self.X_train = X_train # TODO needed if wanting to do residual plots
-        self.y_train = y_train
 
-        # -------- Compute Loss -------- #
-        train_loss = loss_function(y_train, pred(X_train, self.coeffs_), loss='mse') # TODO Change by R2 or others??
+        # -------- Compute Loss / Val -------- #
+        train_loss = evaluate_score(y_train, pred(X_train, self.coeffs_), metric=loss, task='regression')
 
-        if X_val!=None and y_val!=None:
-            val_loss = loss_function(y_val, pred(X_val, self.coeffs_), loss='mse')
+        if X_val.all()!=None and y_val.all()!=None:
+            val_loss = evaluate_score(y_train, pred(X_train, self.coeffs_), metric=loss, task='regression')
             ols_results['train_loss'], ols_results['val_loss'] = train_loss, val_loss
         else:
             ols_results['train_loss'] = train_loss
 
         return ols_results
 
-    def evaluate(self, X_test, y_test, metric='r2'):
+    def evaluate(self, X_test, y_test, metric='r2') -> float:
         """
         Evaluates model's performance according to selected metric and compare the result to a baseline.
 
@@ -218,7 +227,7 @@ class LinearRegOLS():
         test_score : float
             - Score on the test dataset
         """
-        # ------ Baseline Computation ------ #
+        # ------------ Baseline ------------ #
         y_train = self.y_train
         self.baseline = baseline_score(y_train, y_test, metric=metric, task='regression')
 
@@ -239,9 +248,6 @@ class LinearRegOLS():
                 print(f"❌ Model did not performed better ({metric}_score = {test_score}) than the baseline score ({metric}_score = {self.baseline})")
 
         return test_score
-
-    def residuals_plot():
-        pass
 
     def predict(self, X_new) -> np.ndarray:
         """
@@ -272,7 +278,7 @@ class LinearRegSGD():
               learning_rate=0.01,
               #  batch_size=None, # TODO Implement batch_size
               early_stopping=None,
-              verbose=True) -> tuple:
+              verbose=True) -> dict:
         """
         Train the model on the training dataset and evaluates on validation set.
 
@@ -310,14 +316,14 @@ class LinearRegSGD():
 
         print(f"Loss function: {self.loss}")
 
-        if isinstance(y_train, pd.Series):
-            y_train = y_train.to_numpy()
+        # if isinstance(y_train, pd.Series):
+        #     y_train = y_train.to_numpy()
 
         for epoch in range(epochs):
             # ----------- Compute Train / Val Loss ----------- #
-            indices = np.random.permutation(n_train)
-            X_train = X_train[indices]
-            y_train = y_train[indices]
+            # indices = np.random.permutation(n_train)
+            # X_train = X_train[indices]
+            # y_train = y_train[indices]
 
             # ----------- Compute Train / Val Loss ----------- #
             loss_train = loss_function(y_true=y_train, y_pred=pred(X_train, coeffs), loss=self.loss)
