@@ -4,6 +4,7 @@ Module for Linear Regression and Logistic Regression built from scratch without 
 
 import numpy as np
 import pandas as pd
+from collections import Counter
 from linear_models.src.metrics import *
 from linear_models.utils import *
 
@@ -39,11 +40,10 @@ def gradient(X_train, y_train, coeffs, loss='mse') -> np.ndarray:
     obs_train = len(X_train)
 
     if loss=='mse':
-        # gradient_ = (2/obs_train) * (X_train.T @ ((X_train @ coeffs) - np.resize(y_train, new_shape=(len(y_train),1))))
         gradient_ = (2/obs_train) * (X_train.T @ ((X_train @ coeffs) - y_train))
 
     elif loss == 'log_loss':
-        gradient_ = 0 # TODO add grandient BCE
+        gradient_ = 0 # TODO add gradient BCE
 
     else:
         raise ValueError(f"Unknown loss '{loss}', unable to compute the gradient")
@@ -129,7 +129,7 @@ def baseline_score(y_test, y_train,  metric='mse', task='regression'):
 
     While for classification tasks, the predictions will be the most common category.
 
-    Arg
+    Parameters
     ----
     task : str
         - 'regression'
@@ -151,7 +151,14 @@ def baseline_score(y_test, y_train,  metric='mse', task='regression'):
     ----
     baseline_score : float
     """
-    baseline_pred = np.mean(y_train)
+    if task=='regression':
+        baseline_pred = np.mean(y_train)
+    elif task=='classification':
+        baseline_pred = np.full(shape=len(y_test),
+                                fill_value=Counter(y_train).most_common(1)[0][0])
+    else:
+        raise ValueError(f"Unknown task '{task}'")
+
     baseline_score = evaluate_score(y_true=y_test, y_pred=baseline_pred, metric=metric, task=task)
     return float(baseline_score)
 
@@ -167,20 +174,33 @@ def ordinary_least_square(X, y) -> np.ndarray:
     ols = np.linalg.inv(np.matmul(X.T, X)) @ np.matmul(X.T, y)
     return ols
 
+def sigmoid(y_pred):
+    """
+    Compute sigmoïd function
+    """
+    sigmoid_ = 1 / (1 + np.exp(np.negative(y_pred)))
+    return sigmoid_
+
+def odds_ratio(proba, opp_proba):
+    return proba / opp_proba
+
+def log_odds(proba, opp_proba):
+    return np.log(odds_ratio(proba, opp_proba))
+
 #---------------------------#
 # Linear Regression Classes #
 #---------------------------#
 
 class LinearRegOLS():
     """
-    Linear Regression Class with closed form solution, Ordinary Least Squares (OLS)
+    Linear Regression Class with closed form solution, Ordinary Least Squares (OLS).
     """
 
     def train(self, X_train, y_train, X_val=None, y_val=None, loss='mse') -> dict:
         """
         Train linear model on the training dataset and evaluate loss bith on validation set.
 
-        Arg
+        Parameter
         ----
         metric : str
             - 'mse'
@@ -214,7 +234,7 @@ class LinearRegOLS():
         """
         Evaluates model's performance according to selected metric and compare the result to a baseline.
 
-        Arg
+        Parameter
         ----
         metric : str
             - 'mse'
@@ -263,7 +283,7 @@ class LinearRegOLS():
 
 class LinearRegSGD():
     """
-    Linear Regression Class with Gradient Descent
+    Linear Regression Class with iterative solution (i.e. Gradient Descent).
     """
 
     def __init__(self, loss='mse'):
@@ -276,13 +296,13 @@ class LinearRegSGD():
               y_val,
               epochs=10,
               learning_rate=0.01,
-              #  batch_size=None, # TODO Implement batch_size
+              batch_size=None, # TODO Implement batch_size
               early_stopping=None,
               verbose=True) -> dict:
         """
         Train the model on the training dataset and evaluates on validation set.
 
-        Args
+        Parameters
         ----
         epoch : int
             - Number of times the model sees the full training dataset.
@@ -316,15 +336,8 @@ class LinearRegSGD():
 
         print(f"Loss function: {self.loss}")
 
-        # if isinstance(y_train, pd.Series):
-        #     y_train = y_train.to_numpy()
 
         for epoch in range(epochs):
-            # ----------- Compute Train / Val Loss ----------- #
-            # indices = np.random.permutation(n_train)
-            # X_train = X_train[indices]
-            # y_train = y_train[indices]
-
             # ----------- Compute Train / Val Loss ----------- #
             loss_train = loss_function(y_true=y_train, y_pred=pred(X_train, coeffs), loss=self.loss)
             loss_val = loss_function(y_true=y_val, y_pred=pred(X_val, coeffs), loss=self.loss)
@@ -376,7 +389,7 @@ class LinearRegSGD():
         """
         Evaluates model's performance according to selected metric and compare the result to a baseline.
 
-        Arg
+        Parameter
         ----
         metric : str
             - 'mse'
@@ -433,15 +446,58 @@ class LinearRegSGD():
 # Logistic Regression Classes #
 #-----------------------------#
 
-def sigmoid(y_pred):
+class LogisticRegression():
     """
-    Compute sigmoïd function
+    Logistic Regression Class with closed form solution.
     """
-    sigmoid_ = 1 / (1 + np.exp(-1 * y_pred))
-    return sigmoid_
 
-class LogisticRegOLS():
-    pass
+    def __init__(self, threshold=0.5):
+        self.threshold = threshold
+
+    def train(self, X_train, y_train, X_val=None, y_val=None, metric='accuracy') -> dict:
+        """
+        Train logistic regression model on the training dataset and evaluate loss bith on validation set.
+
+        Parameter
+        ----
+        metric : str
+            - 'accuracy'
+            - 'recall'
+            - 'precision'
+            - 'f1'
+
+        Returns
+        ----
+        logit_results : dict
+            - 'loss_train' loss on the training dataset
+            - 'loss_val' loss on the validation dataset
+        """
+        self.y_train = y_train
+        logit_results = {}
+        # coeffs_logit = ordinary_least_square(X_train, y_train)
+        self.coeffs_ = coeffs_logit
+
+        # -------- Compute Loss / Val -------- #
+        train_loss = evaluate_score(y_train, pred(X_train, self.coeffs_), metric=metric, task='classification')
+
+        if X_val.all()!=None and y_val.all()!=None:
+            val_loss = evaluate_score(y_train, pred(X_train, self.coeffs_), metric=metric, task='classification')
+            logit_results['train_loss'], logit_results['val_loss'] = train_loss, val_loss
+        else:
+            logit_results['train_loss'] = train_loss
+
+        return logit_results
+
+    def evaluate():
+        pass
+
+    def predict(X_new):
+        """"""
+        probabilities = sigmoid(pred(X_new, self.coeffs_))
+        # predictions = probabilities.map(if )
+        # [1 for prediction in prediction if prediction >= self.threshold else 0]
+        return predictions
+
 
 class LogisticRegSGD():
 
@@ -449,9 +505,6 @@ class LogisticRegSGD():
         self.log_loss = loss
 
     def train(self):
-        pass
-
-    def evaluate(self):
         metric_train_history = []
         metric_val_history = []
 
@@ -471,24 +524,27 @@ class LogisticRegSGD():
         #     # --------------- Metric Histories ----------------- #
         #     loss_train_history.append(loss_train)
         #     loss_val_history.append(loss_val)
+
+        # history['metric_train_history'] = metric_train_history
+        # history['metric_val_history'] = metric_val_history
+        pass
+
+    def evaluate(self):
         pass
 
     def plot_learning_curves(self, plot_metric=True):
         """
         Plot learning curves which shows the scores of training and validation datasets for each epoch.
 
-        Arg
+        Parameter
         ---
         plot_metric : bool
             - Allows to choose whether to returns both loss and metric curves plots or only the loss curves.
         """
-        # if plot_metric==True:
-        #     print("Model's training and validation losses and metric plotted:")
-        #     return plot_loss_metric(self.history, self.baseline)
-        # else:
-        #     print("Model's training and validation losses plotted:")
-        #     return plot_loss(self.history, self.baseline)
-        pass
+        if plot_metric==True:
+            return plot_loss_metric(self.history, self.baseline)
+        else:
+            return plot_loss(self.history, self.baseline)
 
     def predict(self):
         pass
