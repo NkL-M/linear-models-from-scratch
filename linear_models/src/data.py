@@ -79,7 +79,7 @@ def split_data(X_mat, y, test_size=0.2) -> tuple:
                                                       random_state=42,
                                                       shuffle=True)
 
-    print(f"X_train: {X_train.shape} - y_train: {y_train.shape}")
+    print(f"X_train: {X_train.shape} - y_train: {y_train.shape}") # TODO modify to have names in the prints
     print(f"X_val: {X_val.shape} - y_val: {y_val.shape}")
     print(f"X_test: {X_test.shape} - y_test: {y_test.shape}")
 
@@ -90,7 +90,7 @@ def get_data(X, y, test_size=0.2) -> tuple:
     Function that get the data ready for ML algorithms and split the data into
     a train, val and test datasets.
 
-    Arg
+    Parameter
     ----
     test_size : float
 
