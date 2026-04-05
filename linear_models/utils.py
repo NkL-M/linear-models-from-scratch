@@ -19,8 +19,9 @@ def plot_loss(history, baseline, early_stopping=None, es_count=None):
     plt.plot(history['loss_val_history'])
     plt.axhline(y=baseline, color='red', linestyle='--', linewidth=0.8)
 
-    if early_stopping != None and es_count >= early_stopping:
-        plt.axvline(x=len(history['loss_train_history'])-early_stopping, color='green', linestyle='--', linewidth=0.8)
+    if early_stopping != None:
+        if es_count >= early_stopping:
+            plt.axvline(x=len(history['loss_train_history'])-early_stopping, color='green', linestyle='--', linewidth=0.8)
 
     plt.title('Model loss')
     plt.ylabel('Loss')
@@ -50,8 +51,9 @@ def plot_loss_metric(history, baseline, metric_name=None, early_stopping=None, e
     ax[0].set_ylabel('Loss')
     ax[0].set_xlabel('Epoch')
 
-    if early_stopping != None and es_count >= early_stopping:
-        ax[0].axvline(x=len(history['loss_train_history']) - early_stopping, color='green', linestyle='--', linewidth=0.8)
+    if early_stopping != None:
+        if es_count >= early_stopping:
+            ax[0].axvline(x=len(history['loss_train_history']) - early_stopping, color='green', linestyle='--', linewidth=0.8)
 
     ax[0].legend(['Training', 'Validation', 'Early stopping'], loc='best')
 
