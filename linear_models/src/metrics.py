@@ -67,17 +67,15 @@ def mae(y_true, y_pred) -> float:
 #---------------------------------#
 # Classification Metrics and Loss #
 #---------------------------------#
-
 def log_loss(y_true, y_pred) -> float:
     """
-    Function for computing log_loss / Binaray cross-entropy loss (BCE).
+    Function for computing log loss aka Binary cross-entropy loss (BCE).
 
     Returns
     ----
     log_loss : float
     """
-    y_pred = np.clip(y_pred, 1e-15, 1 - 1e-15) #TODO Add this clip to limit values of array
-    logloss = (-1/len(y_true)) * np.sum(y_true * np.log(y_pred) + (1 - y_true) * np.log(1 - y_pred))
+    logloss = (-1/len(y_true)) * np.sum((y_true * np.log(y_pred)) + ((1 - y_true) * np.log(1 - y_pred)))
     return logloss
 
 def accuracy(y_true, y_pred) -> float:
@@ -88,18 +86,9 @@ def accuracy(y_true, y_pred) -> float:
     ----
     accuracy_score : float
     """
-    y_result = y_true - y_pred
-    assert(len(y_true)==len(y_pred))
-    assert(len(y_result)==len(y_true))
-
-    tp_tn = 0
-    for x in y_result:
-        if x==0:
-            tp_tn += 1
-
-    # accuracy_score = (tp + tn) / (tp + tn + fp + fn)
-    accuracy_score = tp_tn / len(y_result)
-    return accuracy_score
+    tp_tn = np.sum([1 for true, pred in zip(y_true, y_pred) if true==pred])
+    accuracy_score = tp_tn / len(y_true)
+    return float(accuracy_score)
 
 def recall(y_true, y_pred) -> float:
     """
@@ -109,8 +98,9 @@ def recall(y_true, y_pred) -> float:
     ----
     recall_score : float
     """
-    tp, fp = 0
-    recall_score = tp / (tp + fp)
+    tp = np.sum([1 for true, pred in zip(y_true, y_pred) if true==1 and pred==1])
+    fn = np.sum([1 for true, pred in zip(y_true, y_pred) if true==1 and pred==0])
+    recall_score = tp / (tp + fn) if (tp + fn) > 0 else 0.0
     return float(recall_score)
 
 def precision(y_true, y_pred) -> float:
@@ -121,8 +111,9 @@ def precision(y_true, y_pred) -> float:
     ----
     precision_score : float
     """
-    tp, fn = 0
-    precision_score = tp / (tp + fn)
+    tp = np.sum([1 for true, pred in zip(y_true, y_pred) if true==1 and pred==1])
+    fp = np.sum([1 for true, pred in zip(y_true, y_pred) if true==0 and pred==1])
+    precision_score = tp / (tp + fp) if (tp + fp) > 0 else 0.0
     return float(precision_score)
 
 def f1(y_true, y_pred) -> float:
@@ -135,5 +126,5 @@ def f1(y_true, y_pred) -> float:
     """
     recall_ = recall(y_true, y_pred)
     precision_ = precision(y_true, y_pred)
-    f1_score = 2 * ((recall_ * precision_) / (recall_ + precision_))
+    f1_score = 2 * ((recall_ * precision_) / (recall_ + precision_)) if (recall_ + precision_) > 0 else 0.0
     return float(f1_score)
